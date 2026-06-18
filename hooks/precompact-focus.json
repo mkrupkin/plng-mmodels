@@ -1,0 +1,6 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreCompact",
+    "additionalContext": "Compaction guidance from the mmodels plugin. When summarizing this conversation, preserve in this order: (1) the user's active task and any unresolved questions; (2) routing decisions made by the mmodels dispatcher — which tier (light/medium/heavy) handled which subtask and the one-line reason; (3) any ESCALATE events and why they happened; (4) file paths recently touched and the nature of edits; (5) final outcomes of tier-agent runs. Drop: verbose tool output, routine file-read dumps, duplicate context, and intermediate exploration that did not change the plan."
+  }
+}

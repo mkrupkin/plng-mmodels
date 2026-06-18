@@ -82,6 +82,37 @@ Most of your token spend then shifts to cheaper models, while Opus is spent only
 
 > Prefer maximum savings over routing accuracy? Run the main session on Sonnet instead. Classification gets slightly less reliable, but the dispatcher itself costs less. The rubric is deliberately rule-based so a cheaper dispatcher can still follow it.
 
+## Token-saving compaction (proactive `/compact`)
+
+Long sessions pile up context — old tool output, file reads, exploration — and every new turn pays for carrying it. Model Router ships two small helpers so compaction happens **sooner and smarter** instead of right before the limit.
+
+### What the plugin provides
+
+1. **PreCompact hook** — fires automatically on every compaction (auto or manual) and injects a focus instruction so Claude preserves what `mmodels` needs: your active task, routing decisions, ESCALATE events, recently touched files, and tier-agent outcomes. The conversation summary stays useful instead of generic.
+2. **`/mmodels-compact`** — a one-step slash command that prints a ready-to-paste `/compact …` line with the same focus instruction baked in. Use it whenever the session feels heavy.
+
+### Make auto-compact fire earlier (the real "auto" lever)
+
+Claude Code already runs auto-compact when context **approaches the window limit**. Setting **`autoCompactWindow`** lower makes it fire **sooner**, so you spend fewer tokens dragging stale context around. The plugin cannot set this for you (it lives in your global settings), but it's one line:
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "autoCompactEnabled": true,
+  "autoCompactWindow": 400000
+}
+```
+
+- `400000` (~400k chars) is a balanced default — compaction kicks in well before the ceiling, the PreCompact hook makes the summary mmodels-aware, and you carry roughly half the context you would otherwise.
+- Drop to `200000`–`300000` for aggressive savings (more frequent compaction, slightly more risk of dropping useful detail).
+- Range allowed by the schema: `100000`–`1000000`.
+
+### Honest limits
+
+- **No plugin can call `/compact` on its own.** Only the user or the built-in auto-compact (under the limit) can trigger it. The hook only runs *during* a compaction; it cannot start one.
+- The PreCompact hook ships **only via the plugin install** (`/plugin install model-router@plng-mmodels`). A manual install of just the skill/agents to `~/.claude/` does not register the hook.
+
 ## Configuration
 
 Want different models per tier? Edit the `model:` field in the agent files:
@@ -106,10 +137,12 @@ Accepted values for a plugin agent's `model`: `haiku`, `sonnet`, `opus`. Adjust 
 
 ## Roadmap
 
+- [x] **v0.2:** PreCompact hook with mmodels-aware focus + `/mmodels-compact` + `autoCompactWindow` recipe
 - [ ] Token/cost accounting + a per-session savings report
 - [ ] A cheap Haiku pre-classifier (deterministic first hop) instead of dispatcher-judged routing
 - [ ] Optional cheapest tier via local models (Ollama) or OpenRouter
 - [ ] Auto-tuning of the rubric from observed escalations
+- [ ] PostCompact hook with a compaction log
 
 ## Repository layout
 
@@ -126,7 +159,10 @@ plng-mmodels/
 │   └── mmodels/
 │       └── SKILL.md        # classification rubric + dispatch workflow
 ├── commands/
-│   └── mmodels.md          # /mmodels slash command
+│   ├── mmodels.md          # /mmodels slash command
+│   └── mmodels-compact.md  # /mmodels-compact (smart-focus /compact)
+├── hooks/
+│   └── precompact-focus.json  # PreCompact hook payload (mmodels-aware focus)
 ├── README.md
 └── LICENSE
 ```
