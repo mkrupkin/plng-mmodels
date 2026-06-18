@@ -5,7 +5,7 @@ description: >-
   Haiku, normal work to Sonnet, hard work to Opus — to cut token cost without losing quality.
   Use at the start of any coding, editing, refactoring, or debugging task to decide which tier
   agent should execute it.
-user-invocable: false
+user-invocable: true
 ---
 
 # mmodels — model routing policy
