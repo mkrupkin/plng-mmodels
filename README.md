@@ -1,0 +1,136 @@
+# Model Router
+
+**Route every task to the cheapest Claude model that can actually do it — and stop paying Opus prices for Haiku work.**
+
+Model Router is a [Claude Code](https://code.claude.com) plugin. It turns your main session into a **dispatcher** that classifies each task by difficulty and hands execution to the cheapest capable model:
+
+- 🟢 **Trivial / mechanical** → **Haiku** (cheapest)
+- 🟡 **Normal development** → **Sonnet**
+- 🔴 **Hard / risky** → **Opus** (most capable)
+
+Instead of running every file read, rename, and boilerplate edit on an expensive model, the dispatcher delegates them to a Haiku sub-agent and reserves Opus for the work that truly needs it.
+
+> **This is not a "council".** Multi-model consensus tools (e.g. [karpathy/llm-council](https://github.com/karpathy/llm-council)) ask *all* models the *same* question and cost **more** for higher quality. Model Router uses *one* model per task, chosen by difficulty, to cost **less**.
+
+## How it works
+
+```
+   Your task
+       │
+       ▼
+  ┌────────────┐   classifies difficulty
+  │ Dispatcher │   (your main Opus session)
+  └─────┬──────┘
+        ├── trivial ──▶ light  (Haiku)   format · rename · regex · boilerplate · config
+        ├── normal ───▶ medium (Sonnet)  features · tests · scoped refactors · debugging
+        └── hard ─────▶ heavy  (Opus)    architecture · ambiguous specs · security · hard bugs
+```
+
+- The plugin ships three **tier sub-agents** (`light`, `medium`, `heavy`), each pinned to a model via the agent's `model:` field.
+- The **`mmodels` skill** gives the dispatcher the rubric and tells it to delegate rather than do the work itself — that delegation is where the savings come from.
+- **Escalation:** a lower tier that finds a task harder than expected returns `ESCALATE: <reason>`, and the dispatcher re-dispatches one tier up. The guiding rule is *"when in doubt, route up"* — a slightly pricier correct answer beats a cheap wrong one.
+
+## Routing rubric
+
+| Tier | Model | Use for |
+|------|-------|---------|
+| **Light** | Haiku | formatting, renames, find/replace, regex, boilerplate, single-file edits with a precise spec, "what does this do" reads, commit messages, config/JSON/YAML/Markdown |
+| **Medium** | Sonnet | well-scoped features, writing/updating tests, refactors with a clear boundary, pattern-following multi-file edits, routine debugging |
+| **Heavy** | Opus | architecture/design, ambiguous requirements, security- or correctness-critical changes, multi-system debugging, cross-cutting refactors |
+
+## Requirements
+
+- [Claude Code](https://code.claude.com) (the CLI / IDE agent).
+- Access to Haiku, Sonnet, and Opus on your plan (Pro/Max subscription **or** API billing). The routing logic is identical either way — on a subscription you save rate-limit usage; on API you save real money.
+
+## Install
+
+In Claude Code, add this repo as a plugin marketplace and install the plugin:
+
+```
+/plugin marketplace add mkrupkin/plng-mmodels
+/plugin install model-router@plng-mmodels
+```
+
+The tier agents, the `mmodels` skill, and the `/mmodels` command become available immediately.
+
+## Usage
+
+**Explicit** — route a single task with `/mmodels`:
+
+```
+/mmodels rename every getUser() call to fetchUser() across the auth module
+→ Light (Haiku): mechanical rename, single module
+```
+
+```
+/mmodels design a plugin system with sandboxed third-party extensions
+→ Heavy (Opus): architecture decision, high cost of being wrong
+```
+
+**Automatic** — the `mmodels` skill activates on coding tasks and routes them for you. You'll see a one-line note such as `→ Medium (Sonnet): add tests for the parser` before each delegation.
+
+## Recommended setup
+
+Run your **main session on Opus** so the dispatcher makes the best classification calls, then let it push execution down to Sonnet/Haiku:
+
+```
+claude --model opus
+```
+
+Most of your token spend then shifts to cheaper models, while Opus is spent only on routing decisions and genuinely hard sub-tasks.
+
+> Prefer maximum savings over routing accuracy? Run the main session on Sonnet instead. Classification gets slightly less reliable, but the dispatcher itself costs less. The rubric is deliberately rule-based so a cheaper dispatcher can still follow it.
+
+## Configuration
+
+Want different models per tier? Edit the `model:` field in the agent files:
+
+| File | Field |
+|------|-------|
+| `agents/light.md`  | `model: haiku`  |
+| `agents/medium.md` | `model: sonnet` |
+| `agents/heavy.md`  | `model: opus`   |
+
+Accepted values for a plugin agent's `model`: `haiku`, `sonnet`, `opus`. Adjust the rubric in `skills/mmodels/SKILL.md` to change what counts as trivial vs. hard.
+
+## Why it saves tokens (and the honest caveats)
+
+**Savings:** the bulk of agentic work — reading files, search, boilerplate, mechanical edits — is offloaded to Haiku/Sonnet sub-agents instead of running on Opus.
+
+**Caveats — read these:**
+
+1. **The dispatcher itself costs tokens.** Classifying tasks and reading each sub-agent's result runs on your main model. The rubric is kept rule-based so this stays cheap and predictable.
+2. **A cheaper model can misjudge difficulty.** Mitigated by *"route up when in doubt"* plus the `ESCALATE` protocol.
+3. **No built-in token accounting yet.** Savings aren't measured for you — that's on the roadmap.
+
+## Roadmap
+
+- [ ] Token/cost accounting + a per-session savings report
+- [ ] A cheap Haiku pre-classifier (deterministic first hop) instead of dispatcher-judged routing
+- [ ] Optional cheapest tier via local models (Ollama) or OpenRouter
+- [ ] Auto-tuning of the rubric from observed escalations
+
+## Repository layout
+
+```
+plng-mmodels/
+├── .claude-plugin/
+│   ├── plugin.json         # plugin manifest
+│   └── marketplace.json    # makes this repo installable as a marketplace
+├── agents/
+│   ├── light.md            # Haiku tier
+│   ├── medium.md           # Sonnet tier
+│   └── heavy.md            # Opus tier
+├── skills/
+│   └── mmodels/
+│       └── SKILL.md        # classification rubric + dispatch workflow
+├── commands/
+│   └── mmodels.md          # /mmodels slash command
+├── README.md
+└── LICENSE
+```
+
+## License
+
+[MIT](LICENSE).

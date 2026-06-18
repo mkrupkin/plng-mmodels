@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "model-router",
+  "displayName": "Model Router",
+  "version": "0.1.0",
+  "description": "Routes each task to the cheapest capable Claude model — trivial work to Haiku, standard work to Sonnet, hard work to Opus — to cut token cost while keeping quality.",
+  "author": {
+    "name": "mkrupkin"
+  },
+  "homepage": "https://github.com/mkrupkin/plng-mmodels",
+  "repository": "https://github.com/mkrupkin/plng-mmodels",
+  "license": "MIT",
+  "keywords": [
+    "model-routing",
+    "cost-optimization",
+    "tokens",
+    "haiku",
+    "sonnet",
+    "opus",
+    "subagents",
+    "claude-code"
+  ]
+}
