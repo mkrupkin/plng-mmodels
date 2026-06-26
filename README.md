@@ -70,6 +70,33 @@ The tier agents, the `mmodels` skill, and the `/mmodels` command become availabl
 
 **Automatic** — the `mmodels` skill activates on coding tasks and routes them for you. You'll see a one-line note such as `→ Medium (Sonnet): add tests for the parser` before each delegation.
 
+### Force routing on every prompt (`UserPromptSubmit` hook)
+
+Skill auto-activation is best-effort — on a busy turn the dispatcher can forget to classify before diving in. To make routing fire **on every single prompt**, add a `UserPromptSubmit` hook. It runs before Claude responds and injects a one-line reminder into the context, so the dispatcher always classifies first.
+
+Add to your `~/.claude/settings.json` (or a project-level `.claude/settings.json`):
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"Before responding, invoke the mmodels skill to classify this task and route it to the cheapest capable model tier - Haiku for trivial, Sonnet for normal, Opus for hard.\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+How it works: a `UserPromptSubmit` hook's stdout is added to the model's context for that turn. The `echo` above simply restates the routing instruction, which nudges the dispatcher to run the `mmodels` skill before doing anything else. It costs nothing per turn beyond a few tokens and makes routing deterministic instead of best-effort.
+
+> The reminder is just a string — tweak the wording to taste, or scope the hook to a single project by putting it in that project's `.claude/settings.json` instead of the global one.
+
 ## Recommended setup
 
 Run your **main session on Opus** so the dispatcher makes the best classification calls, then let it push execution down to Sonnet/Haiku:
