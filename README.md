@@ -32,28 +32,26 @@ Instead of running every file read, rename, and boilerplate edit on an expensive
 
 ## ⚡ Quick install prompt
 
-**The fastest way to get going — paste this prompt into a fresh Claude Code (desktop or CLI) session.** It installs the plugin *and* wires up automatic routing in one go:
+**Fastest path — paste this into a fresh Claude Code (CLI or desktop) session:**
 
-> Install the Claude Code plugin "model-router".
-> Run these two commands:
-> `/plugin marketplace add mkrupkin/plng-mmodels`
-> `/plugin install model-router@plng-mmodels`
-> Then confirm the /mmodels command and the light/medium/heavy agents are available.
->
-> Then enable automatic routing: add a UserPromptSubmit hook to my ~/.claude/settings.json that injects this reminder before every prompt — "Before responding, invoke the mmodels skill to classify this task and route it to the cheapest capable model tier - Haiku for trivial, Sonnet for normal, Opus for hard." — but SKIP the reminder when my message starts with "/" (a slash command / skill invocation), since those don't need routing. Use an implementation that works on my OS, and don't overwrite any hooks I already have in settings.json.
+```
+Install the Claude Code plugin at https://github.com/mkrupkin/plng-mmodels.
 
-If `/plugin` isn't available in your environment, use the manual-install prompt instead:
+Steps:
+1. Run /plugin marketplace add mkrupkin/plng-mmodels
+2. Run /plugin install model-router@plng-mmodels
+3. Add a UserPromptSubmit hook to ~/.claude/settings.json that injects this line
+   before each prompt: "Before responding, invoke the mmodels skill to classify this
+   task and route it to the cheapest capable model tier - Haiku for trivial, Sonnet
+   for normal, Opus for hard." — but skip it when my message starts with "/". Don't
+   overwrite hooks I already have; pick an implementation that fits my OS.
+4. Confirm the /mmodels command, the light/medium/heavy agents, the PreCompact hook,
+   and the new UserPromptSubmit hook are all in place in ~/.claude/settings.json.
 
-> Install the model-router plugin manually from https://github.com/mkrupkin/plng-mmodels.
-> Clone it, then copy into ~/.claude/:
-> - skills/mmodels/ → ~/.claude/skills/mmodels/
-> - agents/light.md, medium.md, heavy.md → ~/.claude/agents/
-> - commands/mmodels.md, mmodels-compact.md → ~/.claude/commands/
-> Then confirm /mmodels works and the light/medium/heavy agents are registered.
->
-> Then enable automatic routing: add a UserPromptSubmit hook to my ~/.claude/settings.json that injects this reminder before every prompt — "Before responding, invoke the mmodels skill to classify this task and route it to the cheapest capable model tier - Haiku for trivial, Sonnet for normal, Opus for hard." — but SKIP the reminder when my message starts with "/" (a slash command / skill invocation), since those don't need routing. Use an implementation that works on my OS, and don't overwrite any hooks I already have in settings.json.
+If anything fails, stop and tell me the exact error — don't paper over it.
+```
 
-Works in **Claude Code** (the CLI and the Claude Code desktop app), which supports plugins. The separate **Claude Desktop** chat app uses a different extension model (MCP/connectors) and cannot load Claude Code plugins. The manual install registers the skill, agents, and commands but **not** the PreCompact hook — that ships only with the full `/plugin install`. Prefer to run the steps by hand? See [Install](#install) and [Force routing on every prompt](#force-routing-on-every-prompt-userpromptsubmit-hook) below.
+No `/plugin` in your environment? Swap steps 1–2 for: clone the repo and copy `skills/mmodels/`, `agents/{light,medium,heavy}.md`, and `commands/{mmodels,mmodels-compact}.md` into `~/.claude/`. A manual copy gives you routing but **not** the PreCompact hook — that ships only with the full `/plugin install`. Plugins work in **Claude Code** only, not the separate Claude Desktop chat app.
 
 ## Routing rubric
 
