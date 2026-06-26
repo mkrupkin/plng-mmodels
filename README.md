@@ -30,6 +30,31 @@ Instead of running every file read, rename, and boilerplate edit on an expensive
 - The **`mmodels` skill** gives the dispatcher the rubric and tells it to delegate rather than do the work itself — that delegation is where the savings come from.
 - **Escalation:** a lower tier that finds a task harder than expected returns `ESCALATE: <reason>`, and the dispatcher re-dispatches one tier up. The guiding rule is *"when in doubt, route up"* — a slightly pricier correct answer beats a cheap wrong one.
 
+## ⚡ Quick install prompt
+
+**The fastest way to get going — paste this prompt into a fresh Claude Code (desktop or CLI) session.** It installs the plugin *and* wires up automatic routing in one go:
+
+> Install the Claude Code plugin "model-router".
+> Run these two commands:
+> `/plugin marketplace add mkrupkin/plng-mmodels`
+> `/plugin install model-router@plng-mmodels`
+> Then confirm the /mmodels command and the light/medium/heavy agents are available.
+>
+> Then enable automatic routing: add a UserPromptSubmit hook to my ~/.claude/settings.json that injects this reminder before every prompt — "Before responding, invoke the mmodels skill to classify this task and route it to the cheapest capable model tier - Haiku for trivial, Sonnet for normal, Opus for hard." — but SKIP the reminder when my message starts with "/" (a slash command / skill invocation), since those don't need routing. Use an implementation that works on my OS, and don't overwrite any hooks I already have in settings.json.
+
+If `/plugin` isn't available in your environment, use the manual-install prompt instead:
+
+> Install the model-router plugin manually from https://github.com/mkrupkin/plng-mmodels.
+> Clone it, then copy into ~/.claude/:
+> - skills/mmodels/ → ~/.claude/skills/mmodels/
+> - agents/light.md, medium.md, heavy.md → ~/.claude/agents/
+> - commands/mmodels.md, mmodels-compact.md → ~/.claude/commands/
+> Then confirm /mmodels works and the light/medium/heavy agents are registered.
+>
+> Then enable automatic routing: add a UserPromptSubmit hook to my ~/.claude/settings.json that injects this reminder before every prompt — "Before responding, invoke the mmodels skill to classify this task and route it to the cheapest capable model tier - Haiku for trivial, Sonnet for normal, Opus for hard." — but SKIP the reminder when my message starts with "/" (a slash command / skill invocation), since those don't need routing. Use an implementation that works on my OS, and don't overwrite any hooks I already have in settings.json.
+
+Works in **Claude Code** (the CLI and the Claude Code desktop app), which supports plugins. The separate **Claude Desktop** chat app uses a different extension model (MCP/connectors) and cannot load Claude Code plugins. The manual install registers the skill, agents, and commands but **not** the PreCompact hook — that ships only with the full `/plugin install`. Prefer to run the steps by hand? See [Install](#install) and [Force routing on every prompt](#force-routing-on-every-prompt-userpromptsubmit-hook) below.
+
 ## Routing rubric
 
 | Tier | Model | Use for |
@@ -54,31 +79,6 @@ In Claude Code, add this repo as a plugin marketplace and install the plugin:
 
 The tier agents, the `mmodels` skill, and the `/mmodels` command become available immediately.
 
-### Quick install prompt
-
-Prefer to let Claude do it? Paste this into a fresh **Claude Code** (desktop or CLI) session:
-
-```
-Install the Claude Code plugin "model-router".
-Run these two commands:
-/plugin marketplace add mkrupkin/plng-mmodels
-/plugin install model-router@plng-mmodels
-Then confirm the /mmodels command and the light/medium/heavy agents are available.
-```
-
-If `/plugin` isn't available in your environment, use the manual-install prompt instead:
-
-```
-Install the model-router plugin manually from https://github.com/mkrupkin/plng-mmodels.
-Clone it, then copy into ~/.claude/:
-- skills/mmodels/  → ~/.claude/skills/mmodels/
-- agents/light.md, medium.md, heavy.md → ~/.claude/agents/
-- commands/mmodels.md, mmodels-compact.md → ~/.claude/commands/
-Then confirm /mmodels works and the light/medium/heavy agents are registered.
-```
-
-> Works in **Claude Code** (the CLI and the Claude Code desktop app), which supports plugins. The separate **Claude Desktop** chat app uses a different extension model (MCP/connectors) and cannot load Claude Code plugins. The manual install registers the skill, agents, and commands but **not** the PreCompact hook — that ships only with the full `/plugin install`.
-
 ## Usage
 
 **Explicit** — route a single task with `/mmodels`:
@@ -99,7 +99,7 @@ Then confirm /mmodels works and the light/medium/heavy agents are registered.
 
 Skill auto-activation is best-effort — on a busy turn the dispatcher can forget to classify before diving in. To make routing fire **on every single prompt**, add a `UserPromptSubmit` hook. It runs before Claude responds and injects a one-line reminder into the context, so the dispatcher always classifies first.
 
-Add to your `~/.claude/settings.json` (or a project-level `.claude/settings.json`):
+Add to your `~/.claude/settings.json` (or a project-level `.claude/settings.json`). The simplest form injects the reminder on **every** prompt:
 
 ```json
 {
@@ -118,8 +118,29 @@ Add to your `~/.claude/settings.json` (or a project-level `.claude/settings.json
 }
 ```
 
-How it works: a `UserPromptSubmit` hook's stdout is added to the model's context for that turn. The `echo` above simply restates the routing instruction, which nudges the dispatcher to run the `mmodels` skill before doing anything else. It costs nothing per turn beyond a few tokens and makes routing deterministic instead of best-effort.
+**Skip slash commands.** When you type a slash command (`/mmodels …`, `/plugin …`, `/compact …`) you're already telling Claude exactly what to do — re-injecting the routing reminder there is just wasted tokens. This variant reads the prompt from the hook's stdin JSON and stays silent when the message starts with `/`:
 
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r 'if ((.prompt // \"\") | startswith(\"/\")) then empty else \"Before responding, invoke the mmodels skill to classify this task and route it to the cheapest capable model tier - Haiku for trivial, Sonnet for normal, Opus for hard.\" end'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+How it works: a `UserPromptSubmit` hook receives the prompt as JSON on stdin and its stdout is added to the model's context for that turn. The `echo` version always restates the routing instruction; the `jq` version emits it only when the prompt isn't a slash command. Either way it nudges the dispatcher to run the `mmodels` skill before doing anything else, costs only a few tokens, and makes routing deterministic instead of best-effort.
+
+> The `jq` variant needs [`jq`](https://jqlang.github.io/jq/) on `PATH` (preinstalled on most macOS/Linux; on Windows install via `winget install jqlang.jq` or `scoop install jq`). No `jq`? Use the `echo` version — it just doesn't skip slash commands.
+>
 > The reminder is just a string — tweak the wording to taste, or scope the hook to a single project by putting it in that project's `.claude/settings.json` instead of the global one.
 
 ## Recommended setup
