@@ -54,6 +54,31 @@ In Claude Code, add this repo as a plugin marketplace and install the plugin:
 
 The tier agents, the `mmodels` skill, and the `/mmodels` command become available immediately.
 
+### Quick install prompt
+
+Prefer to let Claude do it? Paste this into a fresh **Claude Code** (desktop or CLI) session:
+
+```
+Install the Claude Code plugin "model-router".
+Run these two commands:
+/plugin marketplace add mkrupkin/plng-mmodels
+/plugin install model-router@plng-mmodels
+Then confirm the /mmodels command and the light/medium/heavy agents are available.
+```
+
+If `/plugin` isn't available in your environment, use the manual-install prompt instead:
+
+```
+Install the model-router plugin manually from https://github.com/mkrupkin/plng-mmodels.
+Clone it, then copy into ~/.claude/:
+- skills/mmodels/  → ~/.claude/skills/mmodels/
+- agents/light.md, medium.md, heavy.md → ~/.claude/agents/
+- commands/mmodels.md, mmodels-compact.md → ~/.claude/commands/
+Then confirm /mmodels works and the light/medium/heavy agents are registered.
+```
+
+> Works in **Claude Code** (the CLI and the Claude Code desktop app), which supports plugins. The separate **Claude Desktop** chat app uses a different extension model (MCP/connectors) and cannot load Claude Code plugins. The manual install registers the skill, agents, and commands but **not** the PreCompact hook — that ships only with the full `/plugin install`.
+
 ## Usage
 
 **Explicit** — route a single task with `/mmodels`:

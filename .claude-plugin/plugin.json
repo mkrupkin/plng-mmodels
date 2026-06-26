@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "model-router",
   "displayName": "Model Router",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Routes each task to the cheapest capable Claude model — trivial work to Haiku, standard work to Sonnet, hard work to Opus — to cut token cost while keeping quality. Includes proactive compaction helpers to keep the context small.",
   "hooks": "./.claude-plugin/hooks.json",
   "author": {
